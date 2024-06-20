@@ -4,10 +4,16 @@ const authorText = document.getElementById('author');
 const btnTwitter = document.getElementById('twitter');
 const btnNewQuote = document.getElementById('new-quote');
 const loader = document.getElementById('loader');
+let errorCount = 0;
 
 let listQuotes = [];
 
-function loading() {
+function randomPickAPIURL() {
+    const rpick = Math.floor(Math.random() * 10);
+    return (rpick % 2) == 0 ? 'https://jacintodesign.github.io/quotes-api/data/quotes.json' : 'http://localhost:3000/quotes/random';
+}
+
+function showLoadingSpinner() {
     loader.hidden = false;
     quoteContainer.hidden = true;
 }
@@ -18,16 +24,28 @@ function completeLoaded() {
 }
 
 function validateAuthor(author) {
-    return !author ? "Unknown" : author;
+    return (!author || author === '') ? "Unknown" : author;
 }
 
 function pickQuote(quotes) {
-    let rindx = Math.floor(Math.random() * quotes.length);
-    return quotes[rindx];
+    console.log('quotes:', quotes);
+    if (!quotes || quotes.length == 0) {
+        return null;
+    }
+    if (quotes.length == 1) {
+        return quotes[0];
+    }
+    const rindx = Math.floor(Math.random() * quotes.length);
+    const result = quotes[rindx];
+    return (result.text && result.author) ? result : null
 }
 
 function displayQuote(quotes) {
     let quote = pickQuote(quotes);
+    if (quote == null) {
+        completeLoaded();
+        return;
+    }
     quoteText.classList.remove('long-quote');
     if (quote.text.length > 80) {
         quoteText.classList.add('long-quote');
@@ -42,10 +60,19 @@ function tweetQuote() {
     window.open(twitterURL, '_blank');
 }
 
+function showErrorMessage() {
+    const errorQuote = [{
+        text: "To err is human.",
+        author: "Alexander Pope"
+    }];
+    displayQuote(errorQuote);
+}
+
 // Get quotes from API
 async function fetchAPIQuotes() {
-    loading();
-    const apiUrl = 'https://jacintodesign.github.io/quotes-api/data/quotes.json'
+    showLoadingSpinner();
+    const apiUrl = randomPickAPIURL();
+    console.log(apiUrl);
     try {
         const resp = await fetch(apiUrl);
         listQuotes = await resp.json();
@@ -53,6 +80,13 @@ async function fetchAPIQuotes() {
     } catch (err) {
         // heres the error
         console.log(err)
+        console.log('re-run fetch quotes')
+        if (errorCount++ > 5) {
+            errorCount = 0;
+            showErrorMessage();
+            return;
+        }
+        fetchAPIQuotes();
     }
 }
 
